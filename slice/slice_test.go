@@ -14,31 +14,31 @@ func TestSlice_Compare(t *testing.T) {
 			name: "test larger cmp",
 			s:    []byte{1, 2, 3},
 			arg:  []byte{0, 2, 3},
-			want: Larger,
+			want: CMPLarger,
 		},
 		{
 			name: "test euqal cmp",
 			s:    []byte{1, 2, 3},
 			arg:  []byte{1, 2, 3},
-			want: Same,
+			want: CMPSame,
 		},
 		{
 			name: "test smaller cmp",
 			s:    []byte{1, 2, 3},
 			arg:  []byte{2, 2, 3},
-			want: Smaller,
+			want: CMPSmaller,
 		},
 		{
 			name: "test cmp with empty",
 			s:    []byte{1, 2, 3},
 			arg:  nil,
-			want: Larger,
+			want: CMPLarger,
 		},
 		{
 			name: "test both empty",
 			s:    nil,
 			arg:  nil,
-			want: Same,
+			want: CMPSame,
 		},
 	}
 	for _, tt := range tests {
