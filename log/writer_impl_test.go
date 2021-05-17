@@ -25,7 +25,7 @@ func TestWriterImpl_AddRecord(t *testing.T) {
 	type recordHeader struct {
 		crc        uint32
 		length     int
-		recordType uint8
+		recordType int
 	}
 	type record struct {
 		header recordHeader
@@ -137,7 +137,7 @@ func TestWriterImpl_AddRecord(t *testing.T) {
 					cmpList := make(slice.Slice, 0)
 					cmpList = append(cmpList, byte(crc>>24), byte(crc>>16), byte(crc>>8), byte(crc))
 					cmpList = append(cmpList, byte(length>>8), byte(length))
-					cmpList = append(cmpList, recordType)
+					cmpList = append(cmpList, byte(recordType))
 
 					expData = cmpList
 				}

@@ -8,8 +8,6 @@ import (
 	"github.com/goleveldb/goleveldb/slice"
 )
 
-const ()
-
 // WriterImpl 实现 Writer 接口提供写日志服务.
 type WriterImpl struct {
 	fileWriter  file.Writer
@@ -41,7 +39,7 @@ func (w *WriterImpl) AddRecord(data slice.Slice) error {
 		// 确定本次写入 Record 类型.
 		var (
 			last       = writeLen == left
-			recordType uint8
+			recordType int
 		)
 		if first && last {
 			recordType = RecordFullType
@@ -57,17 +55,17 @@ func (w *WriterImpl) AddRecord(data slice.Slice) error {
 			return err
 		}
 
-		left -= writeLen
 		first = false
 		data = data[writeLen:]
+		left -= writeLen
 	}
 
 	return nil
 }
 
 // writeRecord 将 Record 头部与data封装后写入文件， 成功写入时会修改blockOffset.
-func (w *WriterImpl) writeRecord(data slice.Slice, recordType uint8) error {
-	if len(data)+HeaderSize+w.blockOffset > BlockSize {
+func (w *WriterImpl) writeRecord(data slice.Slice, recordType int) error {
+	if len(data)+HeaderSize > BlockSize-w.blockOffset {
 		return errors.New("data toolong, can not write")
 	}
 
@@ -76,7 +74,7 @@ func (w *WriterImpl) writeRecord(data slice.Slice, recordType uint8) error {
 	header := []byte{
 		byte(crc >> 24), byte(crc >> 16), byte(crc >> 8), byte(crc),
 		byte(lendata >> 8), byte(lendata),
-		recordType,
+		byte(recordType),
 	}
 
 	if err := w.fileWriter.Append(header); err != nil {

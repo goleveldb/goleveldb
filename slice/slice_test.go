@@ -8,7 +8,7 @@ func TestSlice_Compare(t *testing.T) {
 		name string
 		s    Slice
 		arg  Slice
-		want int8
+		want int
 	}{
 		{
 			name: "test larger cmp",
