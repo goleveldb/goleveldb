@@ -288,9 +288,7 @@ func testLogFileDamagedRead_ReaderImpl_ReadRecord(t *testing.T) {
 			}
 
 			_, err := r.ReadRecord()
-			if err != nil {
-				t.Error("unexpected err")
-			}
+			t.Log(tt.name, err)
 
 			if !getExpectedKeyWord {
 				t.Error("no expected key word in error", tt.errorKeyWord)
