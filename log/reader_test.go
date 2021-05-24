@@ -5,9 +5,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/goleveldb/goleveldb/internal/mock/mock_file"
 	"github.com/goleveldb/goleveldb/internal/mock/mock_log"
+
+	"github.com/golang/mock/gomock"
 	"github.com/goleveldb/goleveldb/slice"
 	"github.com/pkg/errors"
 )
@@ -17,6 +18,23 @@ func TestReaderImpl_ReadRecord(t *testing.T) {
 	testNormalReadAfterWrite_ReaderImpl_ReadRecord(t)
 	// 测试在文件损坏的情况下进行读取时 报错信息是否正常.
 	testLogFileDamagedRead_ReaderImpl_ReadRecord(t)
+}
+
+func TestReaderImpl_GetLastRecordOffset(t *testing.T) {
+	tests := []struct {
+		name string
+		want int
+	}{
+		{"", 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := &ReaderImpl{}
+			if got := r.GetLastRecordOffset(); got != tt.want {
+				t.Errorf("ReaderImpl.GetLastRecordOffset() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }
 
 // testNormalReadAfterWrite_ReaderImpl_ReadRecord 测试正常写入后的读取.
@@ -269,7 +287,11 @@ func testLogFileDamagedRead_ReaderImpl_ReadRecord(t *testing.T) {
 				reporter:         mockReporter,
 			}
 
-			r.ReadRecord()
+			_, err := r.ReadRecord()
+			if err != nil {
+				t.Error("unexpected err")
+			}
+
 			if !getExpectedKeyWord {
 				t.Error("no expected key word in error", tt.errorKeyWord)
 			}

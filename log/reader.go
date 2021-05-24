@@ -6,6 +6,7 @@ import (
 
 	"github.com/goleveldb/goleveldb/file"
 	"github.com/goleveldb/goleveldb/slice"
+
 	"github.com/pkg/errors"
 )
 
@@ -20,9 +21,11 @@ type Reader interface {
 // ReaderImpl 实现 Reader 接口, 读取日志.
 type ReaderImpl struct {
 	file.SequentialReader
+	// 最后一个 Record头部ls 相对日志文件的偏移量
 	LastRecordOffset int
-	endOfBufOffset   int
-	buf              slice.Slice
+	// 当前 buffer尾部 相对日志文件的偏移量.
+	endOfBufOffset int
+	buf            slice.Slice
 
 	reporter Reporter
 }
@@ -83,6 +86,11 @@ func (r *ReaderImpl) ReadRecord() (record slice.Slice, err error) {
 			return nil, err
 		}
 	}
+}
+
+// GetLastRecordOffset 获取最后一条日志信息相对文件开头的偏移量.
+func (r *ReaderImpl) GetLastRecordOffset() int {
+	return r.LastRecordOffset
 }
 
 // readPhysicalRecord 读取一个物理 Record, 并返回该 Record 的 data 部分.

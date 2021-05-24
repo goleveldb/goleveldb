@@ -13,6 +13,5 @@ gen_mock_file:
 gen_mock_log_reporter:
 	mockgen -destination ${MOCK_HOME}/mock_log/reporter_mock.go ${MODULE_NAME}/log Reporter
 
-
 clean_mock:
 	rm -rf ./internal/mock
