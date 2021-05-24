@@ -1,10 +1,8 @@
 name: Go
 
 on:
-  push:
-    branches: [ feature/ci ]
   pull_request:
-    branches: [ feature/ci ]
+    branches: [ develop, master ]
 
 jobs:
 
