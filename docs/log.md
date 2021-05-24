@@ -1,6 +1,15 @@
 # GoLevelDB —— Log
 
+---
 
+- `auther`: jaegerwang
+
+---
+
+
+# LogWriter
+
+先讲写日志的部分。
 
 ## WriteableFile
 
@@ -137,3 +146,114 @@ enum RecordType {
 - `file`：文件接口声明
 - `log`：可写文件实现
 
+
+
+# LogReader
+
+再讲读日志的部分，先明确：读日志的目标就是把刚才写进去的东西再读出来。
+
+## SequentialFile
+
+同样，讲一下对应的文件接口：
+
+```cpp
+class LEVELDB_EXPORT SequentialFile {
+ public:
+  SequentialFile() = default;
+
+  SequentialFile(const SequentialFile&) = delete;
+  SequentialFile& operator=(const SequentialFile&) = delete;
+
+  virtual ~SequentialFile();
+  virtual Status Read(size_t n, Slice* result, char* scratch) = 0;
+  virtual Status Skip(uint64_t n) = 0;
+};
+```
+
+`SequentialFile`的中文含义是：顺序文件，意思就是他只能顺序读取，需要提供两个方法：
+
+- `Read`：从文件中读`n`个`byte`到`Slice`，其中`scratch`类似于缓冲区
+- `Skip`：跳过`n`个`byte`
+
+## LogReader
+
+`LogReader`接口定义如下：
+
+```cpp
+class Reader {
+ public:
+  // Interface for reporting errors.
+  class Reporter {
+   public:
+    virtual ~Reporter();
+
+    virtual void Corruption(size_t bytes, const Status& status) = 0;
+  };
+  Reader(SequentialFile* file, Reporter* reporter, bool checksum,
+         uint64_t initial_offset);
+
+  Reader(const Reader&) = delete;
+  Reader& operator=(const Reader&) = delete;
+
+  ~Reader();
+  bool ReadRecord(Slice* record, std::string* scratch);
+  uint64_t LastRecordOffset();
+ private:
+  // Extend record types with the following special values
+  enum {
+    kEof = kMaxRecordType + 1,
+    kBadRecord = kMaxRecordType + 2
+  };
+
+  bool SkipToInitialBlock();
+
+  unsigned int ReadPhysicalRecord(Slice* result);
+
+  void ReportCorruption(uint64_t bytes, const char* reason);
+  void ReportDrop(uint64_t bytes, const Status& reason);
+
+  SequentialFile* const file_;
+  Reporter* const reporter_;
+  bool const checksum_;
+  char* const backing_store_;
+  Slice buffer_;
+  bool eof_;  // Last Read() indicated EOF by returning < kBlockSize
+
+  uint64_t last_record_offset_;
+  uint64_t end_of_buffer_offset_;
+
+  uint64_t const initial_offset_;
+
+  bool resyncing_;
+}
+```
+
+它对外提供了以下方法：
+
+- `ReadRecord`：从当前文件中读取一个`Record`
+- `LastRecordOffst`：这个就是用于获取当前读取到的最后一个`Record`的偏移量
+
+除了对外的方法外，还需要特别在意：
+
+- `resyncing_`：这个置为`true`时会略过当前的`Record`，直接读下一个`Record`（通过忽略当前的`MiddleKind,LastKind`实现）
+
+此外，`Reader`中还定义了一个`Reporter`接口，用来进行错误报告。Reporter接口下一步再讲。
+
+
+
+### ReadRecord方法实现
+
+总体来说可以用这样一张图来概括：
+
+<img src="https://goleveldb-1301596189.cos.ap-guangzhou.myqcloud.com/read_record.png" style="zoom:67%;" />
+
+实质上就是去读一个个被分片了的`Record`，把他们封装成一个完整的`Record`。
+
+这其中，还需要关注一下读物理`Record`这一步，其过程如下：
+
+<img src="https://goleveldb-1301596189.cos.ap-guangzhou.myqcloud.com/read_phy_record.png" style="zoom:67%;" />
+
+### 代码实现：[flow Link](https://github.com/goleveldb/goleveldb/tree/6189ae1a9683b3553c70ee3171d437482fc74ee6)
+
+目录： 
+- `log`： 日志相关功能
