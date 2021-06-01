@@ -1,5 +1,4 @@
-# gleveldb 
-[![Go](https://github.com/goleveldb/goleveldb/actions/workflows/go.yaml/badge.svg)](https://github.com/goleveldb/goleveldb/actions/workflows/go.yaml)
+# gleveldb  [![Go](https://github.com/goleveldb/goleveldb/actions/workflows/go.yaml/badge.svg)](https://github.com/goleveldb/goleveldb/actions/workflows/go.yaml)
 golang leveldb
 
 ## docs
