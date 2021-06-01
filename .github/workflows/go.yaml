@@ -15,14 +15,6 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: 1.15
-    
-    # for act local runner
-    - name: Set up Git
-      run: apt-get update && apt-get install git -y
-
-    # for act local runner
-    - name: Set GoProxy
-      run: go env -w GOPROXY=https://goproxy.cn
 
     - name: UnitTest
       run: go test ./...

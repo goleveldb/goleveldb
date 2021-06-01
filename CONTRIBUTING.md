@@ -55,7 +55,11 @@ mock时请使用`go:generate`进行mock文件的生成，生成的文件存放�
 ```zsh
 brew unlink act && brew install act --HEAD
 
+# 配置github ssh key
 act -s MY_SECRET=${github_ssh_sha256_key}
+
+# 配置本地运行ubuntu镜像版本 ATTENTION! 这个镜像大小为 6.68G !
+echo "-P ubuntu-latest=nektos/act-environments-ubuntu:18.04" > ~/.actrc
 ```
 
 运行方法如下：
