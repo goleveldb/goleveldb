@@ -44,3 +44,26 @@ CR指的是：`Code Review`，请在开发过程中进行`CR`，一次`CR`尽量
 
 #### 3.2.1 mock 时使用 go:generate
 mock时请使用`go:generate`进行mock文件的生成，生成的文件存放在`internal/mock`
+
+## 4. CI
+当前CI流水线基于`github actions`，详情请见：[go.yaml](./.github/workflows/go.yaml)
+
+其中，`Set up Git`, `Set GoProxy`用于本地运行。
+
+### 4.1 本地运行流水线无误后提交
+`github actions`流水线可以通过`act`本地运行，安装方法如下：
+```zsh
+brew unlink act && brew install act --HEAD
+
+# 配置github ssh key
+act -s MY_SECRET=${github_ssh_sha256_key}
+
+# 配置本地运行ubuntu镜像版本 ATTENTION! 这个镜像大小为 6.68G !
+echo "-P ubuntu-latest=nektos/act-environments-ubuntu:18.04" > ~/.actrc
+```
+
+运行方法如下：
+
+```zsh
+act pull_request
+```

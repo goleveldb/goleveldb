@@ -1,0 +1,25 @@
+name: Go
+
+on:
+  pull_request:
+    branches: [ develop, master ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.15
+
+    - name: UnitTest
+      run: go test ./...
+
+    - name: Run golangci-lint
+      # You may pin to the exact commit or the version.
+      # uses: golangci/golangci-lint-action@5c56cd6c9dc07901af25baab6f2b0d9f3b7c3018
+      uses: golangci/golangci-lint-action@v2.5.2
