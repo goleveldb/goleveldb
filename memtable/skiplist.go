@@ -11,11 +11,10 @@ import (
 // skiplist 最大高度.
 const maxHeight = 12
 
-// seekRule 判断是否向后移动.
-// 返回 true 表示不满足最终条件, 需要继续移动.
+// seekRule 寻找规则，满足seekRule时继续寻找.
 type seekRule func(target, next slice.Slice) bool
 
-// skiplist 实现 skiplist 接口.
+// skiplist 实现跳表，进行kv存储.
 type skiplist struct {
 	header *node
 }
@@ -72,13 +71,13 @@ func (l *skiplist) insert(key slice.Slice) error {
 
 // contains 判断 key 是否存在于 skiplist 中.
 func (l *skiplist) contains(key slice.Slice) bool {
-	res := l.find(key, seekGreaterOrEqualRule)
+	res := l.seek(key, seekGreaterOrEqualRule)
 
 	return res != l.header && res.key.Compare(key) == slice.CMPSame
 }
 
-// find 寻找符合 rule 的节点.
-func (l *skiplist) find(target slice.Slice, rule seekRule) *node {
+// seek 通过 seekRule 进行查找.
+func (l *skiplist) seek(target slice.Slice, rule seekRule) *node {
 	cur := l.header
 	for level := maxHeight - 1; level >= 0; level-- {
 		for cur.next[level] != nil && rule(target, cur.next[level].key) {
