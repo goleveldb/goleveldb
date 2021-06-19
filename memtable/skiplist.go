@@ -36,9 +36,9 @@ func newSkiplist() *skiplist {
 
 // iterator 创建 skiplist 迭代器.
 // 创建出的迭代器初始位置为第一个节点.
-func (l *skiplist) iterator() *iterator {
-	it := &iterator{list: l}
-	it.seekToFirst()
+func (l *skiplist) iterator() *Iterator {
+	it := &Iterator{list: l}
+	it.SeekToFirst()
 
 	return it
 }
