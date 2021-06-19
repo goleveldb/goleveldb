@@ -2,6 +2,7 @@ package memtable
 
 import (
 	"errors"
+	"log"
 	"testing"
 
 	"github.com/goleveldb/goleveldb/slice"
@@ -181,7 +182,7 @@ func TestMemtable_SkipListIterator_prev(t *testing.T) {
 func generateSkiplistIterator(datas []slice.Slice) *iterator {
 	list := newSkiplist()
 	for _, data := range datas {
-		list.insert(data)
+		log.Println(list.insert(data))
 	}
 
 	return list.iterator()
