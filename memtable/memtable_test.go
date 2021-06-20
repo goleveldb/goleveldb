@@ -113,14 +113,14 @@ func runTestPoint(t *testing.T, testPoint *memtableTestPoint) {
 			case methodGet:
 				got, err := table.Get(opera.getArg.key)
 				if got.Compare(opera.getArg.wantRes) != slice.CMPSame || (err != nil) != opera.getArg.wantErr {
-					t.Errorf("Memtable => want = (%s, %v), get = (%s, %v)",
-						string(opera.getArg.wantRes), opera.getArg.wantErr, string(got), err)
+					t.Errorf("Memtable => testPoint %s want = (%s, %v), get = (%s, %v)",
+						opera.name, string(opera.getArg.wantRes), opera.getArg.wantErr, string(got), err)
 				}
 			case methodInsert:
 				err := table.Insert(opera.insertArg.sequenceNumber,
 					opera.insertArg.valueType, opera.insertArg.key, opera.insertArg.value)
 				if (err != nil) != opera.insertArg.wantErr {
-					t.Errorf("Memtable => want = (%v), get = (%v)", opera.getArg.wantErr, err)
+					t.Errorf("Memtable => testPoint %s want = (%v), get = (%v)", opera.name, opera.getArg.wantErr, err)
 				}
 			}
 		}
