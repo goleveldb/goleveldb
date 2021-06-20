@@ -102,6 +102,13 @@ func TestMemtable_SkipListIterator_Seek(t *testing.T) {
 			wantErr:    ErrNotValid,
 		},
 		{
+			name:       "test one seek",
+			list:       []slice.Slice{slice.Slice("1"), slice.Slice("3")},
+			seekTarget: slice.Slice("2"),
+			wantRes:    slice.Slice("3"),
+			wantErr:    nil,
+		},
+		{
 			name:       "test nil skiplist",
 			list:       []slice.Slice{},
 			seekTarget: slice.Slice("2"),
@@ -182,7 +189,9 @@ func TestMemtable_SkipListIterator_Prev(t *testing.T) {
 func generateSkiplistIterator(datas []slice.Slice) *Iterator {
 	list := newSkiplist()
 	for _, data := range datas {
-		log.Println(list.insert(data))
+		if err := list.insert(data); err != nil {
+			log.Panicln(err)
+		}
 	}
 
 	return list.iterator()

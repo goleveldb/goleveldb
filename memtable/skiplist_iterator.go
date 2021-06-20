@@ -44,7 +44,7 @@ func (it *Iterator) Prev() {
 		return
 	}
 
-	it.node = it.list.seek(it.node.key, seekLessThanRule)
+	it.node = it.list.seekLessThan(it.node.key)
 	if it.node == it.list.header {
 		it.node = nil
 	}
@@ -52,12 +52,7 @@ func (it *Iterator) Prev() {
 
 // Seek 访问大于等于 target 的第一个节点.
 func (it *Iterator) Seek(target slice.Slice) {
-	it.node = it.list.seek(target, seekGreaterOrEqualRule)
-
-	// 如果找到的节点不符合条件, 置当前节点为空.
-	if it.node.key.Compare(target) == slice.CMPSmaller {
-		it.node = nil
-	}
+	it.node = it.list.seekGreaterOrEqual(target)
 }
 
 // SeekToFirst 访问 skiplist 第一个节点.
@@ -67,7 +62,7 @@ func (it *Iterator) SeekToFirst() {
 
 // SeekToLast 访问 skiplist 最后一个节点.
 func (it *Iterator) SeekToLast() {
-	it.node = it.list.seek(nil, seekLastRule)
+	it.node = it.list.seekLast()
 	if it.node == it.list.header {
 		it.node = nil
 	}
