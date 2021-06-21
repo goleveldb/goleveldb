@@ -94,7 +94,7 @@
 
 ### `skiplist` 基本原理
 
-<img src="skiplist_struct.png" style="zoom:67%;" />
+<img src="https://goleveldb-1301596189.cos.ap-guangzhou.myqcloud.com/skiplist_struct.png" style="zoom:67%;" />
 
 #### skiplist的特性
 
