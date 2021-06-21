@@ -1,4 +1,3 @@
-// Package memtable 定义并实现内存表.
 package memtable
 
 import (
@@ -10,9 +9,6 @@ import (
 
 // skiplist 最大高度.
 const maxHeight = 12
-
-// seekRule 寻找规则，满足seekRule时继续寻找.
-type seekRule func(target, next slice.Slice) bool
 
 // skiplist 实现跳表，进行kv存储.
 type skiplist struct {
@@ -71,16 +67,16 @@ func (l *skiplist) insert(key slice.Slice) error {
 
 // contains 判断 key 是否存在于 skiplist 中.
 func (l *skiplist) contains(key slice.Slice) bool {
-	res := l.seek(key, seekGreaterOrEqualRule)
+	res := l.seekGreaterOrEqual(key)
 
-	return res != l.header && res.key.Compare(key) == slice.CMPSame
+	return res != nil && res.key.Compare(key) == slice.CMPSame
 }
 
-// seek 通过 seekRule 进行查找.
-func (l *skiplist) seek(target slice.Slice, rule seekRule) *node {
+// seekLessThanRule 获取小于 target 的第一个节点.
+func (l *skiplist) seekLessThan(target slice.Slice) *node {
 	cur := l.header
 	for level := maxHeight - 1; level >= 0; level-- {
-		for cur.next[level] != nil && rule(target, cur.next[level].key) {
+		for cur.next[level] != nil && cur.next[level].key.Compare(target) == slice.CMPSmaller {
 			cur = cur.next[level]
 		}
 	}
@@ -88,19 +84,19 @@ func (l *skiplist) seek(target slice.Slice, rule seekRule) *node {
 	return cur
 }
 
-// seekLessThanRule 获取小于 target 的规则.
-// 下一个小于target就继续移动.
-func seekLessThanRule(target, next slice.Slice) bool {
-	return next.Compare(target) == slice.CMPSmaller
+// seekGreaterOrEqualRule 获取大于等于 target 的第一个节点.
+func (l *skiplist) seekGreaterOrEqual(target slice.Slice) *node {
+	return l.seekLessThan(target).next[0]
 }
 
-// seekGreaterOrEqualRule 获取大于等于 target 的规则.
-// 下一个小于等于target就继续移动.
-func seekGreaterOrEqualRule(target, next slice.Slice) bool {
-	return next.Compare(target) != slice.CMPLarger
-}
+// seekLastRule 获取 skiplist 尾部的节点.
+func (l *skiplist) seekLast() *node {
+	cur := l.header
+	for level := maxHeight - 1; level >= 0; level-- {
+		for cur.next[level] != nil {
+			cur = cur.next[level]
+		}
+	}
 
-// seekLastRule 获取 skiplist 尾部的规则.
-func seekLastRule(target, next slice.Slice) bool {
-	return true
+	return cur
 }

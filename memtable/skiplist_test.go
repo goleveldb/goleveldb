@@ -12,8 +12,8 @@ const (
 	methodContains = "contains"
 )
 
-// operation 记录操作方法及其内容.
-type opreation struct {
+// skiplistOpreation 记录操作方法及其内容.
+type skiplistOpreation struct {
 	name   string
 	method string
 	key    slice.Slice
@@ -21,18 +21,18 @@ type opreation struct {
 	expectPositive bool
 }
 
-// testPoint 记录测试点数据.
-type testPoint struct {
+// skiplistTestPoint 记录测试点数据.
+type skiplistTestPoint struct {
 	name       string
-	operations []*opreation
+	operations []*skiplistOpreation
 }
 
 // TestMemtable_skiplistImpl_all 对 skiplistImpl 进行测试.
 func TestMemtable_skiplistImpl_all(t *testing.T) {
-	tests := []*testPoint{
+	tests := []*skiplistTestPoint{
 		{
 			name: "test normal insert and contains",
-			operations: []*opreation{
+			operations: []*skiplistOpreation{
 				{"empty check", methodContains, slice.Slice("foobar"), false},
 				{"insert foobar", methodInsert, slice.Slice("foobar"), true},
 				{"check foobar", methodContains, slice.Slice("foobar"), true},
@@ -51,7 +51,7 @@ func TestMemtable_skiplistImpl_all(t *testing.T) {
 }
 
 // generateTestPointFunc 根据测试点生成测试函数.
-func generateTestPointFunc(operations []*opreation) func(t *testing.T) {
+func generateTestPointFunc(operations []*skiplistOpreation) func(t *testing.T) {
 	return func(t *testing.T) {
 		var isPositive bool
 		list := newSkiplist()
