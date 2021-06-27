@@ -10,24 +10,19 @@ import (
 // skiplist 最大高度.
 const maxHeight = 12
 
+// compareKeyMethod 比较两个 slice.
+type compareKeyMethod func(slice.Slice, slice.Slice) int
+
 // skiplist 实现跳表，进行kv存储.
 type skiplist struct {
 	header *node
+	cmp    compareKeyMethod
 }
 
 // node 描述 skiplist 节点.
 type node struct {
 	key  slice.Slice
 	next [maxHeight]*node
-}
-
-// newSkiplist 实例化 skiplist 并返回.
-func newSkiplist() *skiplist {
-	return &skiplist{
-		header: &node{
-			next: [maxHeight]*node{},
-		},
-	}
 }
 
 // iterator 创建 skiplist 迭代器.
@@ -45,13 +40,13 @@ func (l *skiplist) insert(key slice.Slice) error {
 
 	cur := l.header
 	for level := maxHeight - 1; level >= 0; level-- {
-		for cur.next[level] != nil && cur.next[level].key.Compare(key) != slice.CMPLarger {
+		for cur.next[level] != nil && l.cmp(cur.next[level].key, key) != slice.CMPLarger {
 			cur = cur.next[level]
 		}
 		prevs[level] = cur
 	}
 
-	if prevs[0].key.Compare(key) == slice.CMPSame {
+	if l.cmp(prevs[0].key, key) == slice.CMPSame {
 		return errors.New("equal key")
 	}
 
@@ -69,14 +64,14 @@ func (l *skiplist) insert(key slice.Slice) error {
 func (l *skiplist) contains(key slice.Slice) bool {
 	res := l.seekGreaterOrEqual(key)
 
-	return res != nil && res.key.Compare(key) == slice.CMPSame
+	return res != nil && l.cmp(res.key, key) == slice.CMPSame
 }
 
 // seekLessThanRule 获取小于 target 的第一个节点.
 func (l *skiplist) seekLessThan(target slice.Slice) *node {
 	cur := l.header
 	for level := maxHeight - 1; level >= 0; level-- {
-		for cur.next[level] != nil && cur.next[level].key.Compare(target) == slice.CMPSmaller {
+		for cur.next[level] != nil && l.cmp(cur.next[level].key, target) == slice.CMPSmaller {
 			cur = cur.next[level]
 		}
 	}

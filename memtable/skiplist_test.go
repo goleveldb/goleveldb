@@ -12,6 +12,19 @@ const (
 	methodContains = "contains"
 )
 
+func compareString(a, b slice.Slice) int {
+	return a.Compare(b)
+}
+
+func newTestSkipList() *skiplist {
+	return &skiplist{
+		header: &node{
+			next: [maxHeight]*node{},
+		},
+		cmp: compareString,
+	}
+}
+
 // skiplistOpreation 记录操作方法及其内容.
 type skiplistOpreation struct {
 	name   string
@@ -54,7 +67,7 @@ func TestMemtable_skiplistImpl_all(t *testing.T) {
 func generateTestPointFunc(operations []*skiplistOpreation) func(t *testing.T) {
 	return func(t *testing.T) {
 		var isPositive bool
-		list := newSkiplist()
+		list := newTestSkipList()
 		for _, opera := range operations {
 			switch opera.method {
 			case methodInsert:

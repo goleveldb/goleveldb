@@ -27,7 +27,14 @@ type Memtable struct {
 
 // New 创建并初始化 Memtable.
 func New() *Memtable {
-	return &Memtable{table: newSkiplist()}
+	return &Memtable{
+		table: &skiplist{
+			header: &node{
+				next: [maxHeight]*node{},
+			},
+			cmp: compareKey,
+		},
+	}
 }
 
 // Iterator 创建用于遍历内存表的迭代器.
@@ -43,7 +50,7 @@ func (t *Memtable) Iterator() *Iterator {
 // - value length (varint).
 // - value data.
 func (t *Memtable) Insert(sequenceNumber uint64, valueType byte, key, value slice.Slice) error {
-	totalLen := varintLen(len(key)) + len(key) + int64Len + varintLen(len(value)) + len(key)
+	totalLen := varintLen(len(key)) + len(key) + int64Len + varintLen(len(value)) + len(value)
 	record := make([]byte, totalLen)
 	curPos := 0
 
@@ -55,7 +62,7 @@ func (t *Memtable) Insert(sequenceNumber uint64, valueType byte, key, value slic
 	copy(record[curPos:curPos+len(key)], key)
 	curPos += len(key)
 
-	binary.LittleEndian.PutUint64(record[curPos:], ((sequenceNumber << 8) | uint64(valueType)))
+	binary.BigEndian.PutUint64(record[curPos:], ((sequenceNumber << 8) | uint64(valueType)))
 	curPos += int64Len
 
 	// 添加 varint 编码value长度.
@@ -75,20 +82,27 @@ func (t *Memtable) Get(key slice.Slice) (value slice.Slice, err error) {
 	}
 
 	// 检查获取的 record 中的 key 与期望的 key 是否相同.
-	keyLength, bytLength := binary.Varint(record)
-	recordKey := record[bytLength : bytLength+int(keyLength)]
+	recordKey, keyLength := loadKey(record)
 	if key.Compare(recordKey) != slice.CMPSame {
 		return nil, ErrNotFound
 	}
 
-	return parseValue(record[keyLength+int64(bytLength):])
+	return parseTagAndValue(record[keyLength:])
 }
 
 // seekByKey 通过 key 在内存表中查找 record.
 func (t *Memtable) seekByKey(key slice.Slice) (value slice.Slice, err error) {
+	// put key.
 	seekKey := make([]byte, varintLen(len(key)))
 	binary.PutVarint(seekKey, int64(len(key)))
 	seekKey = append(seekKey, key...)
+
+	// put tag.
+	tag := make([]byte, int64Len)
+	for i := 0; i < int64Len; i++ {
+		tag[i] = 0xff
+	}
+	seekKey = append(seekKey, tag...)
 
 	iter := t.table.iterator()
 	iter.Seek(seekKey)
@@ -96,10 +110,10 @@ func (t *Memtable) seekByKey(key slice.Slice) (value slice.Slice, err error) {
 	return iter.Key()
 }
 
-// parseValue 解析值.
-func parseValue(record slice.Slice) (slice.Slice, error) {
+// parseTagAndValue 解析值.
+func parseTagAndValue(record slice.Slice) (slice.Slice, error) {
 	// 读取 sequenceNumber & valueType.
-	tag := binary.LittleEndian.Uint64(record)
+	tag := binary.BigEndian.Uint64(record)
 	record = record[int64Len:]
 
 	if tag&0xff != typeValue {
@@ -123,5 +137,37 @@ func varintLen(num int) int {
 		num = num >> 7
 	}
 
+	// if res == 0, return 1.
+	if res == 0 {
+		res++
+	}
+
 	return res
+}
+
+// compareKey 比较两个key的大小.
+func compareKey(a, b slice.Slice) int {
+	keyA, lenA := loadKey(a)
+	keyB, lenB := loadKey(b)
+
+	// not equal, return result.
+	if res := keyA.Compare(keyB); res != 0 {
+		return res
+	}
+
+	// key equal, sequenceNumber 大的排在前面.
+	if binary.BigEndian.Uint64(a[lenA:]) > binary.BigEndian.Uint64(b[lenB:]) {
+		return slice.CMPSmaller
+	} else if binary.BigEndian.Uint64(a[lenA:]) < binary.BigEndian.Uint64(b[lenB:]) {
+		return slice.CMPLarger
+	}
+
+	return slice.CMPSame
+}
+
+// 从一条record中读取 key 部分(指向的数据段相同).
+func loadKey(record slice.Slice) (slice.Slice, int) {
+	keyLength, varintLength := binary.Varint(record)
+
+	return record[varintLength : varintLength+int(keyLength)], varintLength + int(keyLength)
 }

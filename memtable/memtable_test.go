@@ -44,7 +44,7 @@ func TestMemtable_Memtable_Iterator(t *testing.T) {
 func TestMemtable_Memtable_All(t *testing.T) {
 	tests := []*memtableTestPoint{
 		{
-			name: "test",
+			name: "test normal",
 			operations: []*memtableOperation{
 				{
 					name:   "get not exist key",
@@ -92,6 +92,51 @@ func TestMemtable_Memtable_All(t *testing.T) {
 						key:     slice.Slice("foo"),
 						wantRes: nil,
 						wantErr: true,
+					},
+				},
+			},
+		},
+		{
+			name: "test overwrite",
+			operations: []*memtableOperation{
+				{
+					name:   "write key",
+					method: methodInsert,
+					insertArg: &insertArg{
+						sequenceNumber: 1,
+						valueType:      typeValue,
+						key:            slice.Slice("foo"),
+						value:          slice.Slice("bar"),
+						wantErr:        false,
+					},
+				},
+				{
+					name:   "get key",
+					method: methodGet,
+					getArg: &getArg{
+						key:     slice.Slice("foo"),
+						wantRes: slice.Slice("bar"),
+						wantErr: false,
+					},
+				},
+				{
+					name:   "overwrite key",
+					method: methodInsert,
+					insertArg: &insertArg{
+						sequenceNumber: 2,
+						valueType:      typeValue,
+						key:            slice.Slice("foo"),
+						value:          slice.Slice("var"),
+						wantErr:        false,
+					},
+				},
+				{
+					name:   "get overwrited key",
+					method: methodGet,
+					getArg: &getArg{
+						key:     slice.Slice("foo"),
+						wantRes: slice.Slice("var"),
+						wantErr: false,
 					},
 				},
 			},
