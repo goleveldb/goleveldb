@@ -187,7 +187,7 @@ func TestMemtable_SkipListIterator_Prev(t *testing.T) {
 }
 
 func generateSkiplistIterator(datas []slice.Slice) *Iterator {
-	list := newSkiplist()
+	list := newTestSkipList()
 	for _, data := range datas {
 		if err := list.insert(data); err != nil {
 			log.Panicln(err)
