@@ -77,12 +77,6 @@ func TestAll(t *testing.T) {
 					want:      "",
 					wantError: true,
 				},
-				{
-					name:      "skip eof",
-					opera:     operaSkip,
-					n:         5,
-					wantError: true,
-				},
 			},
 		},
 	}
