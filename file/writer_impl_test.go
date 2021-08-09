@@ -157,7 +157,7 @@ func runWriterImplTestPoint(t *testing.T, testPoint *writerTestPoint) {
 		}
 
 		if tt.wantErr != (err != nil) {
-			t.Errorf("runWriterImplTestPoint() = get err = %v, get wantErr = %v", err, tt.wantErr)
+			t.Errorf("runWriterImplTestPoint() %s get err = %v, get wantErr = %v", tt.name, err, tt.wantErr)
 		}
 	}
 
