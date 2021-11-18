@@ -14,35 +14,37 @@ type footer struct {
 }
 
 const (
-	TABLE_MAGIC_NUMBER uint64 = 0xdb4775248b80fb57
-	FOOTER_PADDING_LENGTH = 2 * (block.MAX_BLOCK_HANDLE_LENGTH - block.BLOCK_HANDLE_LENGTH)
-	FOOTER_LENGTH = 2 * block.MAX_BLOCK_HANDLE_LENGTH + 8
+	tableMagicNumber uint64 = 0xdb4775248b80fb57
+	footerPaddingLength = 2 * (block.MaxBlockHandleLength - block.BlockHandleLength)
+	footerLength = 2 * block.MaxBlockHandleLength + 8
 )
 
-var ERR_INVALID_SSTABLE = errors.New("This sstable file is broken")
+var errInvalidSSTable = errors.New("This sstable file is broken")
 
 func newFooter(bytes []byte) (*footer, error) {
-	if len(bytes) != FOOTER_LENGTH {
-		return nil, ERR_INVALID_SSTABLE
+	if len(bytes) != footerLength {
+		return nil, errInvalidSSTable
 	}
-	if TABLE_MAGIC_NUMBER != binary.BigEndian.Uint64(bytes[2*block.MAX_BLOCK_HANDLE_LENGTH:]) {
-		return nil, ERR_INVALID_SSTABLE
+	if tableMagicNumber != binary.BigEndian.Uint64(bytes[2*block.MaxBlockHandleLength:]) {
+		return nil, errInvalidSSTable
 	}
 
 	res := footer{}
 	res.metaIndexHandle = block.NewHandle(bytes)
-	res.indexHandle = block.NewHandle(bytes[block.BLOCK_HANDLE_LENGTH:])
+	res.indexHandle = block.NewHandle(bytes[block.BlockHandleLength:])
 
 	return &res, nil
 }
 
 func (f *footer) toSlice() slice.Slice {
-	res := make([]byte, FOOTER_LENGTH)
+	res := make([]byte, footerLength)
 	offset := 0
 	offset += copy(res, f.indexHandle.ToSlice())
-	offset += copy(res[offset:], f.metaIndexHandle.ToSlice())
-	offset += FOOTER_PADDING_LENGTH
-	binary.BigEndian.PutUint64(res[offset:], TABLE_MAGIC_NUMBER)
+	// TODO resolve meta index instead of adding 16
+	// offset += copy(res[offset:], f.metaIndexHandle.ToSlice())
+	offset += block.BlockHandleLength
+	offset += footerPaddingLength
+	binary.BigEndian.PutUint64(res[offset:], tableMagicNumber)
 
 	return slice.Slice(res)
 }

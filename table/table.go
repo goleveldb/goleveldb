@@ -22,7 +22,7 @@ var (
 
 func New(file file.RandomReader, size int) (*Table, error) {
 	// decode footer information
-	footerBytes, err := file.Read(uint64(size - FOOTER_LENGTH), FOOTER_LENGTH)
+	footerBytes, err := file.Read(uint64(size - footerLength), footerLength)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +44,7 @@ func New(file file.RandomReader, size int) (*Table, error) {
 }
 
 func readBlock(handle *block.Handle, file file.RandomReader) (slice.Slice, error) {
-	content, err := file.Read(handle.Offset, handle.Size + BLOCK_TAIL_SIZE)
+	content, err := file.Read(handle.Offset, handle.Size + blockTailSize)
 	if err != nil {
 		return nil, err
 	}

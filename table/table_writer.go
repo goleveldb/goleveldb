@@ -24,7 +24,7 @@ type tableWriterImpl struct {
 }
 
 const (
-	BLOCK_TAIL_SIZE = 4 + 1	// 写块尾的大小，包括了4字节的crc校验码和1字节的压缩类型信息
+	blockTailSize = 4 + 1	// 写块尾的大小，包括了4字节的crc校验码和1字节的压缩类型信息
 )
 
 var _ TableWriter = (*tableWriterImpl)(nil)
@@ -68,7 +68,7 @@ func (t *tableWriterImpl) writeBlockContent(content slice.Slice) (offset, size i
 		return
 	}
 
-	tail := make([]byte, BLOCK_TAIL_SIZE)
+	tail := make([]byte, blockTailSize)
 	// TODO 这里将压缩信息固定为0，表示不进行压缩
 	checksum := crc32.Update(
 		crc32.ChecksumIEEE(content), crc32.IEEETable, []byte{tail[0]})
@@ -78,7 +78,7 @@ func (t *tableWriterImpl) writeBlockContent(content slice.Slice) (offset, size i
 	}
 	
 	blockOffset, blockSize := t.offset, len(content)
-	t.offset += uint64(len(content) + BLOCK_TAIL_SIZE)
+	t.offset += uint64(len(content) + blockTailSize)
 
 	return int(blockOffset), blockSize
 }
@@ -106,7 +106,10 @@ func (t *tableWriterImpl) Finish() error {
 	if err := t.file.Append(tableFooter.toSlice()); err != nil {
 		return err
 	}
-	t.offset += FOOTER_LENGTH
+	if err := t.file.Flush(); err != nil {
+		return err
+	}
+	t.offset += footerLength
 
 	return nil
 }

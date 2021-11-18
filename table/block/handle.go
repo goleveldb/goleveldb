@@ -13,8 +13,8 @@ type Handle struct {
 }
 
 const (
-	BLOCK_HANDLE_LENGTH = 2 * 8	// 一个blockHandle的实际大小 16B
-	MAX_BLOCK_HANDLE_LENGTH = 20	// 序列化blockHandle所需要的最大空间 = 20B
+	BlockHandleLength = 2 * 8	// 一个blockHandle的实际大小 16B
+	MaxBlockHandleLength = 20	// 序列化blockHandle所需要的最大空间 = 20B
 )
 
 func NewHandle(bytes []byte) *Handle {
@@ -26,7 +26,7 @@ func NewHandle(bytes []byte) *Handle {
 }
 
 func (b *Handle) ToSlice() slice.Slice {
-	handle, pos := make([]byte, BLOCK_HANDLE_LENGTH), 0
+	handle, pos := make([]byte, BlockHandleLength), 0
 	binary.BigEndian.PutUint64(handle, b.Offset)
 	pos += 4
 	binary.BigEndian.PutUint64(handle[pos:], b.Size)

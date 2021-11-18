@@ -24,7 +24,7 @@ func NewIter(blk *Block) common.Iterator {
 	return &blockIteratorImpl{
 		content: blk.Content,
 		numRestarts: blk.NumRestarts,
-		restartsOffset: blk.NumRestarts,
+		restartsOffset: blk.RestartsOffset,
 	}
 }
 

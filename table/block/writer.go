@@ -67,10 +67,7 @@ func (b *writerImpl) AddEntry(key, value slice.Slice) {
 	newPos += copy(newContent[newPos:], key[share:])
 	copy(newContent[newPos:], value)
 
-	if len(key) > len(b.lastInsertKey) {
-		b.lastInsertKey = key
-	}
-
+	b.lastInsertKey = key
 	b.content = newContent
 	b.counter++
 }
@@ -86,6 +83,7 @@ func (b *writerImpl) Finish() slice.Slice {
 		newPos += 4
 	}
 
+	binary.BigEndian.PutUint32(newContent[newPos:], uint32(len(b.restartPoints)))
 	return slice.Slice(newContent)
 }
 
