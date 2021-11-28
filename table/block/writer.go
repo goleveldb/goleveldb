@@ -15,15 +15,16 @@ type Writer interface {
 }
 
 type writerImpl struct {
-	content []byte	// 当前块数据内容
-	restartPoints []uint32	// 重新进行前缀压缩后的第一个key下标（即这些下标对应的key没有被压缩过，可以进行二分查找）
-	lastInsertKey slice.Slice
-	counter	uint32	// 前缀压缩计数
+	content []byte	// data in current block waiting to be finished
+	restartPoints []uint32	// stores all indexes where lastInsertKey is recalculated
+	lastInsertKey slice.Slice // used for prefix compression
+	counter	uint32	// used for prefix compression, see config.BLOCK_RESTART_INTERVAL
 	isFinished bool
 }
 
 var _ Writer = (*writerImpl)(nil)
 
+// NewWriter: create a concrete instance of Writer interface
 func NewWriter() Writer {
 	restartPoints := []uint32{0}
 	return &writerImpl{
@@ -31,13 +32,14 @@ func NewWriter() Writer {
 	}
 }
 
+// AddEntry: append a new entry to the pending data block in BlockWriter
 func (b *writerImpl) AddEntry(key, value slice.Slice) {
-	// 计算key和lastInsertKey的最长匹配前缀长度
+	// get the prefix length of current key and last insert key
 	share := 0
 	if b.counter == config.BLOCK_RESTART_INTERVAL {
 		b.counter = 0
 		b.restartPoints = append(b.restartPoints, uint32(len(b.content)))
-		b.lastInsertKey = slice.Slice{}
+		b.lastInsertKey = nil
 	}else {
 		minKeyLen := minInt(len(key), len(b.lastInsertKey))
 		for share < minKeyLen {
@@ -49,21 +51,20 @@ func (b *writerImpl) AddEntry(key, value slice.Slice) {
 		}
 	}
 
-
 	var (
 		unshare = len(key) - share
 		valueLen = len(value)
-		varintShare = varintLen(share)
-		varintUnshare = varintLen(unshare)
-		varintValue = varintLen(valueLen)
-		totalSpace = len(b.content) + varintShare + varintUnshare + varintValue + unshare + valueLen
+		varintLenShare = varintLen(share)
+		varintLenUnshare = varintLen(unshare)
+		varintLenValue = varintLen(valueLen)
+		totalSpace = len(b.content) + varintLenShare + varintLenUnshare + varintLenValue + unshare + valueLen
 	)
 
 	newContent, newPos := make([]byte, totalSpace), 0
 	newPos += copy(newContent, b.content)
-	newPos += binary.PutVarint(newContent[newPos:], int64(varintLen(share)))
-	newPos += binary.PutVarint(newContent[newPos:], int64(varintLen(unshare)))
-	newPos += binary.PutVarint(newContent[newPos:], int64(varintLen(valueLen)))
+	newPos += binary.PutUvarint(newContent[newPos:], uint64(share))
+	newPos += binary.PutUvarint(newContent[newPos:], uint64(unshare))
+	newPos += binary.PutUvarint(newContent[newPos:], uint64(valueLen))
 	newPos += copy(newContent[newPos:], key[share:])
 	copy(newContent[newPos:], value)
 
@@ -72,9 +73,10 @@ func (b *writerImpl) AddEntry(key, value slice.Slice) {
 	b.counter++
 }
 
+// Finish: build a slice containing the block content and restart point array info
+// If Finish() is called, new entries shouldn't be appended until Reset() is called.
 func (b *writerImpl) Finish() slice.Slice {
-	totalSpace := len(b.content) + len(b.restartPoints) * 4 + 4
-	newContent, newPos := make([]byte, totalSpace), 0
+	newContent, newPos := make([]byte, b.Size()), 0
 	b.isFinished = true
 
 	newPos += copy(newContent, b.content)
@@ -87,19 +89,20 @@ func (b *writerImpl) Finish() slice.Slice {
 	return slice.Slice(newContent)
 }
 
+// Reset: reset the block to its initial status
 func (b *writerImpl) Reset() {
 	b.isFinished = false
 	b.content = nil
 	b.counter = 0
-	b.lastInsertKey = slice.Slice{}
-	b.restartPoints = nil
+	b.lastInsertKey = nil
+	b.restartPoints = []uint32{0}
 }
 
+// Size: return the estimated size of the built slice if Finish() is called
 func (b *writerImpl) Size() int{
 	return len(b.content) + len(b.restartPoints) * 4 + 4
 }
 
-// 返回一个int的变长int类型长度
 func varintLen(a int) int {
 	if a == 0 {
 		return 1

@@ -28,7 +28,7 @@ func NewHandle(bytes []byte) *Handle {
 func (b *Handle) ToSlice() slice.Slice {
 	handle, pos := make([]byte, BlockHandleLength), 0
 	binary.BigEndian.PutUint64(handle, b.Offset)
-	pos += 4
+	pos += 8
 	binary.BigEndian.PutUint64(handle[pos:], b.Size)
 
 	return slice.Slice(handle)

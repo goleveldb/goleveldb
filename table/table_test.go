@@ -1,85 +1,88 @@
 package table
 
 import (
-	"os"
+	"fmt"
 	"testing"
 
 	"github.com/goleveldb/goleveldb/file"
 	"github.com/goleveldb/goleveldb/slice"
 )
 
-type opType bool
+type stringWriter struct {
+	data []byte
+	reader *stringReader
+}
+var _ file.Writer = (*stringWriter)(nil)
 
-type entry struct {
-	key string
-	value string
+func (s *stringWriter) Append(data slice.Slice) error {
+	s.data = append(s.data, data...)
+	s.reader.data = s.data
+
+	return nil
 }
 
-type baseOperation struct {
-	opType opType
-	expectErr bool
-	optionalErr error
-	expect *entry
-	tableWriter TableWriter
+func (*stringWriter) Flush() error {
+	return nil	
 }
 
-var fileWriter file.Writer
-var fileReader file.RandomReader
+func (*stringWriter) Close() error {
+	return nil
+}
 
-const sstableFileName = "./0.sst"
+func (*stringWriter) Sync() error {
+	return nil	
+}
 
-const (
-	opTypeWrite opType = false
-	opTypeRead opType = true
-)
-
-func TestMain(m *testing.M) {
-	fw, err := file.NewWriter(sstableFileName)
-	if err != nil {
-		panic(err)
-	}
-	fileWriter = fw
-	defer func() {
-		fw.Close()
-		os.Remove(sstableFileName)
-	}()
-
-	fr, err := file.NewRandomReader(sstableFileName)
-	if err != nil {
-		panic(err)
-	}
-	fileReader = fr
-
-	if code := m.Run(); code != 0 {
-		panic(code)
+func newStringWriter(s *stringReader) file.Writer {
+	return &stringWriter{
+		reader: s,
 	}
 }
 
-func Test_WriteAndGet(t *testing.T) {
+type stringReader struct {
+	data []byte
+}
+var _ file.RandomReader = (*stringReader)(nil)
+
+func (s *stringReader) Read(offset, n uint64) (slice.Slice, error) {
+	if offset + n > uint64(len(s.data)) {
+		return nil, file.ErrOutOfBoundary
+	}
+
+	return s.data[offset:offset+n], nil
+}
+
+func newStringReader() *stringReader {
+	return &stringReader{}
+}
+
+func Test_Add(t *testing.T) {
+	fileReader := newStringReader()
+	fileWriter := newStringWriter(fileReader)
 	tableWriter := NewWriter(fileWriter)
-	sequentialExecOperations := []*baseOperation{
-		{
-			opType: opTypeWrite,
-			expectErr: false,
-			expect: &entry{key: "name", value: "lijunyu",},
-			tableWriter: tableWriter,
-		},
-	}
-
-	for _, operation := range sequentialExecOperations {
-		if operation.opType == opTypeWrite {
-			doWrite(operation)
-			continue
-		}
-
-		doRead(operation)
-	}
-}
-
-func doWrite(operation *baseOperation) {
 	
+	tableWriter.Add(makeSlice("20185081"), makeSlice("李峻宇"))
+	if err := tableWriter.Finish(); err != nil {
+		t.Fatal(err)
+	}
+
+	table := getTable(t, fileReader)
+	res, err := table.Get(makeSlice("20185081"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("res: %s\n", res)
 }
 
-func doRead(operation *baseOperation) {
+func getTable(t *testing.T, fileReader *stringReader) *Table {
+	table, err := New(fileReader, len(fileReader.data))
+	if err != nil {
+		t.Fatal(err)
+	}
 
+	return table
+}
+
+func makeSlice(s string) slice.Slice {
+	return []byte(s)
 }

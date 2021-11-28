@@ -16,6 +16,7 @@ type blockIteratorImpl struct {
 	currentRestart uint32
 	key slice.Slice
 	value slice.Slice
+	entryLen uint32
 }
 
 var _ common.Iterator = (*blockIteratorImpl)(nil)
@@ -46,7 +47,7 @@ func (i *blockIteratorImpl) Prev() {
 	// clear the key and value to search from the restart point
 	i.gotoRestart(i.currentRestart)
 	// linear search from current restart point
-	for i.nextEntry() && i.current < origOffset {
+	for i.parseCurrent() && i.current < origOffset {
 
 	}
 }
@@ -59,24 +60,21 @@ func (i *blockIteratorImpl) gotoRestart(restartIndex uint32) {
 }
 
 // get kv at current index
-func (i *blockIteratorImpl) nextEntry() bool {
-	if i.current >= i.currentRestart {
+func (i *blockIteratorImpl) parseCurrent() bool {
+	if i.current >= i.restartsOffset {
 		i.fail()
 		return false
 	}
 
 	entryLen, share, unshare, keyDelta, val := parseEntry(i.content[i.current:])
-	i.current += entryLen
 	currentKey, offset := make([]byte, share + unshare), 0
-	offset += copy(currentKey, i.key[:share])
+	if share > 0 {
+		offset += copy(currentKey, i.key[:share])
+	}
 	copy(currentKey[offset:], keyDelta)
 	i.key = currentKey
 	i.value = val
-
-	// set restart index to the last position <= current
-	for i.currentRestart + 1 < i.numRestarts && i.getRestartOffset(i.currentRestart + 1) <= i.current {
-		i.currentRestart++
-	}
+	i.entryLen = entryLen
 
 	return true
 }
@@ -120,7 +118,16 @@ func (i *blockIteratorImpl) getRestartOffset(restartIndex uint32) uint32 {
 }
 
 func (i *blockIteratorImpl) Next() {
-	i.nextEntry()
+	i.parseCurrent()
+	i.gotoNext()
+}
+
+func (i *blockIteratorImpl) gotoNext() {
+	i.current += i.entryLen
+	// find max restart point index < current
+	for i.currentRestart + 1 < i.numRestarts && i.getRestartOffset(i.currentRestart + 1) <= i.current {
+		i.currentRestart++
+	}
 }
 
 func (i *blockIteratorImpl) Find(key slice.Slice) {
@@ -144,8 +151,8 @@ func (i *blockIteratorImpl) Find(key slice.Slice) {
 	// for data block kv, k.CompareTo(key) == 0 satisfies our needs
 	// to summarize the false condition is k.CompareTo(key) >= 0
 	i.gotoRestart(left)
-	for i.nextEntry() && i.Value().Compare(key) < 0 {
-		
+	for i.parseCurrent() && i.Key().Compare(key) < 0 {
+		i.gotoNext()
 	}
 }
 

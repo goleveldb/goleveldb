@@ -1,7 +1,7 @@
 package file
 
 import (
-	"fmt"
+	"errors"
 	"os"
 
 	"github.com/goleveldb/goleveldb/slice"
@@ -14,7 +14,7 @@ type RandomReaderImpl struct {
 var _ RandomReader = (*RandomReaderImpl)(nil)
 
 var (
-	ErrOutOfBoundary = "desired offset:%d, desired reading size:%d, file total size:%d"
+	ErrOutOfBoundary = errors.New("read offset and size is out of boundary")
 )
 
 func NewRandomReader(fileName string) (RandomReader, error) {
@@ -36,7 +36,7 @@ func (r *RandomReaderImpl) Read(offset, n uint64) (slice.Slice, error) {
 	
 	size := fileInfo.Size()
 	if offset + n > uint64(size) {
-		return nil, fmt.Errorf(ErrOutOfBoundary, offset, n, size)
+		return nil, ErrOutOfBoundary
 	}
 	
 	buffer := make([]byte, n)

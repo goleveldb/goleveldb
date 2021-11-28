@@ -24,11 +24,14 @@ type tableWriterImpl struct {
 }
 
 const (
-	blockTailSize = 4 + 1	// 写块尾的大小，包括了4字节的crc校验码和1字节的压缩类型信息
+	blockTailSize = 4 + 1	// extra bytes (4 for crc validation info, 1 for compression type) for block serialization
+
+	noCompression byte = 0
 )
 
 var _ TableWriter = (*tableWriterImpl)(nil)
 
+// NewWriter: create a concrete instrance for TableWriter interface
 func NewWriter(file file.Writer) TableWriter {
 	return &tableWriterImpl{
 		indexBlock: block.NewWriter(),
@@ -37,43 +40,50 @@ func NewWriter(file file.Writer) TableWriter {
 	}
 }
 
+// Add: add an entry to current table
 func (t *tableWriterImpl) Add(key, value slice.Slice) {
 	t.dataBlock.AddEntry(key, value)
 	currentSize := t.dataBlock.Size()
 	if currentSize >= config.BLOCK_MAX_SIZE {
-		dbOffset, dbSize := t.flush()
-		dbHandle := &block.Handle{
-			Offset: uint64(dbOffset),
-			Size: uint64(dbSize),
+		blockOffset, blockSize := t.flush()
+		blockHandle := &block.Handle{
+			Offset: uint64(blockOffset),
+			Size: uint64(blockSize),
 		}
-		t.indexBlock.AddEntry(key, dbHandle.ToSlice())
+		t.indexBlock.AddEntry(key, blockHandle.ToSlice())
 	}
 
 	t.lastKey = key
 }
 
+// flush: flush the content in TableWriter to storage
 func (t *tableWriterImpl) flush() (offset, size int) {
-	defer t.dataBlock.Reset()
-	return t.writeBlockContent(t.dataBlock.Finish())
+	offset, size = t.writeBlockContent(t.dataBlock.Finish())
+	t.dataBlock.Reset()
+
+	return
 }
 
-// 写块内容并且附加压缩和crc信息
-//	格式
-//  block_data
+//	writerBlockContent: append block content with its type and crc info to file
+//	format:
+//  block_data: Slice
 //	type : uint8
 //	crc : uint32
-// 返回该块的位置信息 <offset, size>, 注意size不包含额外的5B信息（crc校验&type信息）
+// 	returns <offset, size> of the block written in the file
 func (t *tableWriterImpl) writeBlockContent(content slice.Slice) (offset, size int) {
 	if err := t.file.Append(content); err != nil {
 		return
 	}
 
 	tail := make([]byte, blockTailSize)
-	// TODO 这里将压缩信息固定为0，表示不进行压缩
+	// TODO compression is not needed at this moment, so we set tail[0] to 0 in a fixed way
 	checksum := crc32.Update(
-		crc32.ChecksumIEEE(content), crc32.IEEETable, []byte{tail[0]})
+		crc32.ChecksumIEEE(content), crc32.IEEETable, []byte{tail[noCompression]})
 	binary.BigEndian.PutUint32(tail[1:], checksum)
 	if err := t.file.Append(tail); err != nil {
+		return
+	}
+	if err := t.file.Flush(); err != nil {
 		return
 	}
 	
@@ -83,24 +93,29 @@ func (t *tableWriterImpl) writeBlockContent(content slice.Slice) (offset, size i
 	return int(blockOffset), blockSize
 }
 
+// Finish: flush everything in the table to its file storage
+// TODO metaindex block. 
+// currently, only index block and footer are implemented
 func (t *tableWriterImpl) Finish() error {
 	// TODO meta index block
 
-	// 写index block
+	// flush remaining data block if any new entry is written in it
 	if t.dataBlock.Size() > 0 {
-		lastBlockHandle := &block.Handle{
-			Offset: t.offset,
-			Size: uint64(t.dataBlock.Size()),
+		dataBlockOffset, dataBlockSize := t.flush()
+		blockHandle := &block.Handle{
+			Offset: uint64(dataBlockOffset),
+			Size: uint64(dataBlockSize),
 		}
-		t.indexBlock.AddEntry(t.lastKey, lastBlockHandle.ToSlice())
+		t.indexBlock.AddEntry(t.lastKey, blockHandle.ToSlice())
 	}
-	ibOffset, ibSize := t.writeBlockContent(t.indexBlock.Finish())
 
-	// 写sstable footer
+	indexBlockOffset, indexBlockSize := t.writeBlockContent(t.indexBlock.Finish())
+
+	// writer sstable footer
 	tableFooter := &footer{
 		indexHandle: &block.Handle{
-			Offset: uint64(ibOffset),
-			Size: uint64(ibSize),
+			Offset: uint64(indexBlockOffset),
+			Size: uint64(indexBlockSize),
 		},
 	}
 	if err := t.file.Append(tableFooter.toSlice()); err != nil {

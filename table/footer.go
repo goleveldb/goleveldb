@@ -19,7 +19,7 @@ const (
 	footerLength = 2 * block.MaxBlockHandleLength + 8
 )
 
-var errInvalidSSTable = errors.New("This sstable file is broken")
+var errInvalidSSTable = errors.New("this sstable file is broken")
 
 func newFooter(bytes []byte) (*footer, error) {
 	if len(bytes) != footerLength {
@@ -30,8 +30,8 @@ func newFooter(bytes []byte) (*footer, error) {
 	}
 
 	res := footer{}
-	res.metaIndexHandle = block.NewHandle(bytes)
-	res.indexHandle = block.NewHandle(bytes[block.BlockHandleLength:])
+	res.indexHandle = block.NewHandle(bytes)
+	res.metaIndexHandle = block.NewHandle(bytes[block.BlockHandleLength:])
 
 	return &res, nil
 }
