@@ -9,14 +9,14 @@ import (
 )
 
 type footer struct {
-	indexHandle *block.Handle
+	indexHandle     *block.Handle
 	metaIndexHandle *block.Handle
 }
 
 const (
-	tableMagicNumber uint64 = 0xdb4775248b80fb57
-	footerPaddingLength = 2 * (block.MaxBlockHandleLength - block.BlockHandleLength)
-	footerLength = 2 * block.MaxBlockHandleLength + 8
+	tableMagicNumber    uint64 = 0xdb4775248b80fb57
+	footerPaddingLength        = 2 * (block.MaxBlockHandleLength - block.HandleLength)
+	footerLength               = 2*block.MaxBlockHandleLength + 8
 )
 
 var errInvalidSSTable = errors.New("this sstable file is broken")
@@ -31,7 +31,7 @@ func newFooter(bytes []byte) (*footer, error) {
 
 	res := footer{}
 	res.indexHandle = block.NewHandle(bytes)
-	res.metaIndexHandle = block.NewHandle(bytes[block.BlockHandleLength:])
+	res.metaIndexHandle = block.NewHandle(bytes[block.HandleLength:])
 
 	return &res, nil
 }
@@ -41,8 +41,8 @@ func (f *footer) toSlice() slice.Slice {
 	offset := 0
 	offset += copy(res, f.indexHandle.ToSlice())
 	// TODO resolve meta index instead of adding 16
-	// offset += copy(res[offset:], f.metaIndexHandle.ToSlice())
-	offset += block.BlockHandleLength
+	//offset += copy(res[offset:], f.metaIndexHandle.ToSlice())
+	offset += block.HandleLength
 	offset += footerPaddingLength
 	binary.BigEndian.PutUint64(res[offset:], tableMagicNumber)
 

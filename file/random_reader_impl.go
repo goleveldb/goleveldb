@@ -33,12 +33,12 @@ func (r *RandomReaderImpl) Read(offset, n uint64) (slice.Slice, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	size := fileInfo.Size()
-	if offset + n > uint64(size) {
+	if offset+n > uint64(size) {
 		return nil, ErrOutOfBoundary
 	}
-	
+
 	buffer := make([]byte, n)
 	if _, err := r.file.ReadAt(buffer, int64(offset)); err != nil {
 		return nil, err

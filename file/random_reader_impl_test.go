@@ -10,7 +10,7 @@ import (
 )
 
 func Test_RandomReaderImpl_NewRandomReader(t *testing.T) {
-	t.Run("file exists", func (t *testing.T)  {
+	t.Run("file exists", func(t *testing.T) {
 		tmpFile, err := ioutil.TempFile(".", "test_exist")
 		if err != nil {
 			t.Fatal(err)
@@ -32,15 +32,15 @@ func Test_RandomReaderImpl_NewRandomReader(t *testing.T) {
 func Test_RandomReaderImpl_Read(t *testing.T) {
 	type eachRead struct {
 		offset uint64
-		size uint64
+		size   uint64
 		hasErr bool
 	}
 	type testCase struct {
 		writeContent string
-		readings []eachRead
+		readings     []eachRead
 	}
 
-	testCases := []testCase {
+	testCases := []testCase{
 		{
 			writeContent: "hello world",
 			readings: []eachRead{
@@ -59,7 +59,7 @@ func Test_RandomReaderImpl_Read(t *testing.T) {
 			assert(t, nil == os.Remove(fileName))
 		}()
 
-		writer.Append(slice.Slice(testCase.writeContent))
+		assert(t, nil == writer.Append(slice.Slice(testCase.writeContent)))
 		assert(t, nil == writer.Close())
 
 		reader, err := NewRandomReader(fileName)
@@ -72,7 +72,7 @@ func Test_RandomReaderImpl_Read(t *testing.T) {
 				continue
 			}
 
-			memContent := testCase.writeContent[reading.offset:reading.offset+reading.size]
+			memContent := testCase.writeContent[reading.offset : reading.offset+reading.size]
 			assert(t, len(content) == len(memContent))
 			for i := 0; i < len(content); i++ {
 				assert(t, content[i] == memContent[i])

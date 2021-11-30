@@ -4,29 +4,29 @@ import (
 	"encoding/binary"
 	"hash/crc32"
 
-	"github.com/goleveldb/goleveldb/table/block"
 	"github.com/goleveldb/goleveldb/config"
 	"github.com/goleveldb/goleveldb/file"
 	"github.com/goleveldb/goleveldb/slice"
+	"github.com/goleveldb/goleveldb/table/block"
 )
 
 type Writer interface {
-	Add(k,v slice.Slice)
+	Add(k, v slice.Slice)
 	Finish() error
 }
 
 type writerImpl struct {
 	indexBlock block.Writer
-	dataBlock block.Writer
-	file file.Writer
-	offset uint64
-	lastKey slice.Slice
+	dataBlock  block.Writer
+	file       file.Writer
+	offset     uint64
+	lastKey    slice.Slice
 }
 
 const (
-	blockTailSize = 4 + 1	// extra bytes (4 for crc validation info, 1 for compression type) for block serialization
+	blockTailSize = 4 + 1 // extra bytes (4 for crc validation info, 1 for compression type) for block serialization
 
-	noCompression byte = 0	// do not compress the value
+	noCompression byte = 0 // do not compress the value
 )
 
 var _ Writer = (*writerImpl)(nil)
@@ -35,8 +35,8 @@ var _ Writer = (*writerImpl)(nil)
 func NewWriter(file file.Writer) Writer {
 	return &writerImpl{
 		indexBlock: block.NewWriter(),
-		dataBlock: block.NewWriter(),
-		file: file,
+		dataBlock:  block.NewWriter(),
+		file:       file,
 	}
 }
 
@@ -48,7 +48,7 @@ func (t *writerImpl) Add(key, value slice.Slice) {
 		blockOffset, blockSize := t.flush()
 		blockHandle := &block.Handle{
 			Offset: uint64(blockOffset),
-			Size: uint64(blockSize),
+			Size:   uint64(blockSize),
 		}
 		t.indexBlock.AddEntry(key, blockHandle.ToSlice())
 	}
@@ -87,7 +87,7 @@ func (t *writerImpl) writeBlockContent(content slice.Slice, cType byte) (offset,
 	if err := t.file.Flush(); err != nil {
 		return
 	}
-	
+
 	blockOffset, blockSize := t.offset, len(content)
 	t.offset += uint64(len(content) + blockTailSize)
 
@@ -95,7 +95,7 @@ func (t *writerImpl) writeBlockContent(content slice.Slice, cType byte) (offset,
 }
 
 // Finish: flush everything in the table to its file storage
-// TODO metaindex block. 
+// TODO metaindex block.
 // currently, only index block and footer are implemented
 func (t *writerImpl) Finish() error {
 	// TODO meta index block
@@ -105,7 +105,7 @@ func (t *writerImpl) Finish() error {
 		dataBlockOffset, dataBlockSize := t.flush()
 		blockHandle := &block.Handle{
 			Offset: uint64(dataBlockOffset),
-			Size: uint64(dataBlockSize),
+			Size:   uint64(dataBlockSize),
 		}
 		t.indexBlock.AddEntry(t.lastKey, blockHandle.ToSlice())
 	}
@@ -116,7 +116,7 @@ func (t *writerImpl) Finish() error {
 	tableFooter := &footer{
 		indexHandle: &block.Handle{
 			Offset: uint64(indexBlockOffset),
-			Size: uint64(indexBlockSize),
+			Size:   uint64(indexBlockSize),
 		},
 	}
 	if err := t.file.Append(tableFooter.toSlice()); err != nil {

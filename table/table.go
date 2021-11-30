@@ -13,21 +13,21 @@ import (
 
 type Table struct {
 	IndexBlock *block.Block
-	File file.RandomReader
+	File       file.RandomReader
 }
 
 var (
 	ErrCrcValidation = errors.New("read block failed for crc32 is not consistent")
-	ErrNoSuchKey = errors.New("no such key")
+	ErrNoSuchKey     = errors.New("no such key")
 )
 
 func New(file file.RandomReader, size int) (*Table, error) {
 	// decode footer information
-	footerBytes, err := file.Read(uint64(size - footerLength), footerLength)
+	footerBytes, err := file.Read(uint64(size-footerLength), footerLength)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	footer, err := newFooter(footerBytes)
 	if err != nil {
 		return nil, err
@@ -40,12 +40,12 @@ func New(file file.RandomReader, size int) (*Table, error) {
 
 	return &Table{
 		IndexBlock: block.New(indexBlockSlice),
-		File: file,
+		File:       file,
 	}, nil
 }
 
 func readBlock(handle *block.Handle, file file.RandomReader) (slice.Slice, error) {
-	content, err := file.Read(handle.Offset, handle.Size + blockTailSize)
+	content, err := file.Read(handle.Offset, handle.Size+blockTailSize)
 	if err != nil {
 		return nil, err
 	}
@@ -82,6 +82,6 @@ func (t *Table) Get(key slice.Slice) (slice.Slice, error) {
 	if key.Compare(dataBlockIter.Key()) > 0 {
 		return nil, fmt.Errorf("%s:%w", key, ErrNoSuchKey)
 	}
-	
+
 	return dataBlockIter.Value(), nil
 }
