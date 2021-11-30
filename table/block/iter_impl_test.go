@@ -59,6 +59,7 @@ func entriesWithFixValue(fixedValue string, prefix string, genCount int) []*entr
 		res[i] = makeEntry(fmt.Sprintf(prefix, i), fixedValue)
 	}
 
+	sortEntries(res)
 	return res
 }
 

@@ -11,7 +11,7 @@ import (
 )
 
 type Writer interface {
-	Add(k, v slice.Slice)
+	Add(k, v slice.Slice) error
 	Finish() error
 }
 
@@ -41,8 +41,11 @@ func NewWriter(file file.Writer) Writer {
 }
 
 // Add: add an entry to current table
-func (t *writerImpl) Add(key, value slice.Slice) {
-	t.dataBlock.AddEntry(key, value)
+func (t *writerImpl) Add(key, value slice.Slice) error {
+	if err := t.dataBlock.AddEntry(key, value); err != nil {
+		return err
+	}
+
 	currentSize := t.dataBlock.Size()
 	if currentSize >= config.BLOCK_MAX_SIZE {
 		blockOffset, blockSize := t.flush()
@@ -50,10 +53,14 @@ func (t *writerImpl) Add(key, value slice.Slice) {
 			Offset: uint64(blockOffset),
 			Size:   uint64(blockSize),
 		}
-		t.indexBlock.AddEntry(key, blockHandle.ToSlice())
+
+		if err := t.indexBlock.AddEntry(key, blockHandle.ToSlice()); err != nil {
+			return err
+		}
 	}
 
 	t.lastKey = key
+	return nil
 }
 
 // flush: flush the content in TableWriter to storage
