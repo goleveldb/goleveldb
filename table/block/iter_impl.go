@@ -47,8 +47,8 @@ func (i *blockIteratorImpl) Prev() {
 	// clear the key and value to search from the restart point
 	i.gotoRestart(i.currentRestart)
 	// linear search from current restart point
-	for i.parseCurrent() && i.current < origOffset {
-
+	for i.parseCurrent() && i.current + i.entryLen < origOffset {
+		i.gotoNext()
 	}
 }
 
@@ -118,8 +118,8 @@ func (i *blockIteratorImpl) getRestartOffset(restartIndex uint32) uint32 {
 }
 
 func (i *blockIteratorImpl) Next() {
-	i.parseCurrent()
 	i.gotoNext()
+	i.parseCurrent()
 }
 
 func (i *blockIteratorImpl) gotoNext() {

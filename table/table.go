@@ -1,13 +1,10 @@
 package table
 
 import (
-	// "encoding/binary"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"hash/crc32"
-
-	// "hash/crc32"
 
 	"github.com/goleveldb/goleveldb/file"
 	"github.com/goleveldb/goleveldb/slice"

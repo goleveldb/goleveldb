@@ -10,12 +10,12 @@ import (
 	"github.com/goleveldb/goleveldb/slice"
 )
 
-type TableWriter interface {
+type Writer interface {
 	Add(k,v slice.Slice)
 	Finish() error
 }
 
-type tableWriterImpl struct {
+type writerImpl struct {
 	indexBlock block.Writer
 	dataBlock block.Writer
 	file file.Writer
@@ -26,14 +26,14 @@ type tableWriterImpl struct {
 const (
 	blockTailSize = 4 + 1	// extra bytes (4 for crc validation info, 1 for compression type) for block serialization
 
-	noCompression byte = 0
+	noCompression byte = 0	// do not compress the value
 )
 
-var _ TableWriter = (*tableWriterImpl)(nil)
+var _ Writer = (*writerImpl)(nil)
 
 // NewWriter: create a concrete instrance for TableWriter interface
-func NewWriter(file file.Writer) TableWriter {
-	return &tableWriterImpl{
+func NewWriter(file file.Writer) Writer {
+	return &writerImpl{
 		indexBlock: block.NewWriter(),
 		dataBlock: block.NewWriter(),
 		file: file,
@@ -41,7 +41,7 @@ func NewWriter(file file.Writer) TableWriter {
 }
 
 // Add: add an entry to current table
-func (t *tableWriterImpl) Add(key, value slice.Slice) {
+func (t *writerImpl) Add(key, value slice.Slice) {
 	t.dataBlock.AddEntry(key, value)
 	currentSize := t.dataBlock.Size()
 	if currentSize >= config.BLOCK_MAX_SIZE {
@@ -57,8 +57,8 @@ func (t *tableWriterImpl) Add(key, value slice.Slice) {
 }
 
 // flush: flush the content in TableWriter to storage
-func (t *tableWriterImpl) flush() (offset, size int) {
-	offset, size = t.writeBlockContent(t.dataBlock.Finish())
+func (t *writerImpl) flush() (offset, size int) {
+	offset, size = t.writeBlockContent(t.dataBlock.Finish(), noCompression)
 	t.dataBlock.Reset()
 
 	return
@@ -70,15 +70,16 @@ func (t *tableWriterImpl) flush() (offset, size int) {
 //	type : uint8
 //	crc : uint32
 // 	returns <offset, size> of the block written in the file
-func (t *tableWriterImpl) writeBlockContent(content slice.Slice) (offset, size int) {
+func (t *writerImpl) writeBlockContent(content slice.Slice, cType byte) (offset, size int) {
 	if err := t.file.Append(content); err != nil {
 		return
 	}
 
 	tail := make([]byte, blockTailSize)
+	tail[0] = cType
 	// TODO compression is not needed at this moment, so we set tail[0] to 0 in a fixed way
 	checksum := crc32.Update(
-		crc32.ChecksumIEEE(content), crc32.IEEETable, []byte{tail[noCompression]})
+		crc32.ChecksumIEEE(content), crc32.IEEETable, []byte{tail[0]})
 	binary.BigEndian.PutUint32(tail[1:], checksum)
 	if err := t.file.Append(tail); err != nil {
 		return
@@ -96,7 +97,7 @@ func (t *tableWriterImpl) writeBlockContent(content slice.Slice) (offset, size i
 // Finish: flush everything in the table to its file storage
 // TODO metaindex block. 
 // currently, only index block and footer are implemented
-func (t *tableWriterImpl) Finish() error {
+func (t *writerImpl) Finish() error {
 	// TODO meta index block
 
 	// flush remaining data block if any new entry is written in it
@@ -109,7 +110,7 @@ func (t *tableWriterImpl) Finish() error {
 		t.indexBlock.AddEntry(t.lastKey, blockHandle.ToSlice())
 	}
 
-	indexBlockOffset, indexBlockSize := t.writeBlockContent(t.indexBlock.Finish())
+	indexBlockOffset, indexBlockSize := t.writeBlockContent(t.indexBlock.Finish(), noCompression)
 
 	// writer sstable footer
 	tableFooter := &footer{
