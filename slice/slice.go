@@ -11,6 +11,7 @@ const (
 type Slice []byte
 
 // Compare 比较两个切片，返回两者比较结果.
+// TODO user defined comparator
 func (s Slice) Compare(b Slice) int {
 	if string(s) > string(b) {
 		return CMPLarger

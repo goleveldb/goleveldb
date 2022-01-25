@@ -17,7 +17,7 @@ var closedError = errors.New("file is closed")
 
 // NewWriter 根据文件名创建写者.
 func NewWriter(fileName string) (Writer, error) {
-	file, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, os.ModeAppend)
+	file, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, os.ModePerm)
 	if err != nil {
 		return nil, err
 	}
