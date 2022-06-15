@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 
+	"github.com/goleveldb/goleveldb/internal/utils/varstr"
 	"github.com/goleveldb/goleveldb/slice"
 )
 
@@ -12,6 +13,7 @@ import (
 var ErrNotFound = errors.New("key not found")
 
 const (
+	kMaxUint64 uint64 = 0xffffffffffffffff
 	// int64类型占用字节数.
 	int64Len = 8
 
@@ -50,26 +52,16 @@ func (t *Memtable) Iterator() *Iterator {
 // - value length (varint).
 // - value data.
 func (t *Memtable) Insert(sequenceNumber uint64, valueType byte, key, value slice.Slice) error {
-	totalLen := varintLen(len(key)) + len(key) + int64Len + varintLen(len(value)) + len(value)
+	totalLen := varstr.VarStrLen(key) + int64Len + varstr.VarStrLen(value)
 	record := make([]byte, totalLen)
 	curPos := 0
 
-	// 添加 varint 编码key长度.
-	byteLen := binary.PutVarint(record[curPos:], int64(len(key)))
-	curPos += byteLen
-
-	// 添加 key 数据.
-	copy(record[curPos:curPos+len(key)], key)
-	curPos += len(key)
+	curPos += varstr.PutVarStr(record[curPos:], key)
 
 	binary.BigEndian.PutUint64(record[curPos:], ((sequenceNumber << 8) | uint64(valueType)))
 	curPos += int64Len
 
-	// 添加 varint 编码value长度.
-	byteLen = binary.PutVarint(record[curPos:], int64(len(value)))
-	curPos += byteLen
-	// 添加 value 数据.
-	copy(record[curPos:curPos+len(value)], value)
+	curPos += varstr.PutVarStr(record[curPos:], value)
 
 	return t.table.insert(record)
 }
@@ -82,7 +74,7 @@ func (t *Memtable) Get(key slice.Slice) (value slice.Slice, err error) {
 	}
 
 	// 检查获取的 record 中的 key 与期望的 key 是否相同.
-	recordKey, keyLength := loadKey(record)
+	recordKey, keyLength := varstr.GetVarStr(record)
 	if key.Compare(recordKey) != slice.CMPSame {
 		return nil, ErrNotFound
 	}
@@ -92,20 +84,14 @@ func (t *Memtable) Get(key slice.Slice) (value slice.Slice, err error) {
 
 // seekByKey 通过 key 在内存表中查找 record.
 func (t *Memtable) seekByKey(key slice.Slice) (value slice.Slice, err error) {
-	// put key.
-	seekKey := make([]byte, varintLen(len(key)))
-	binary.PutVarint(seekKey, int64(len(key)))
-	seekKey = append(seekKey, key...)
+	// build key.
+	seekByKey := make([]byte, varstr.VarStrLen(key)+int64Len)
 
-	// put tag.
-	tag := make([]byte, int64Len)
-	for i := 0; i < int64Len; i++ {
-		tag[i] = 0xff
-	}
-	seekKey = append(seekKey, tag...)
+	pos := varstr.PutVarStr(seekByKey, key)
+	binary.BigEndian.PutUint64(seekByKey[pos:], kMaxUint64)
 
 	iter := t.table.iterator()
-	iter.Seek(seekKey)
+	iter.Seek(seekByKey)
 
 	return iter.Key()
 }
@@ -129,29 +115,13 @@ func parseTagAndValue(record slice.Slice) (slice.Slice, error) {
 	return record, nil
 }
 
-// varintLen 返回 num 转化为 varintLen 类型后的字节数.
-func varintLen(num int) int {
-	res := 0
-	for num != 0 {
-		res++
-		num = num >> 7
-	}
-
-	// if res == 0, return 1.
-	if res == 0 {
-		res++
-	}
-
-	return res
-}
-
 // compareKey 比较两个key的大小.
 func compareKey(a, b slice.Slice) int {
-	keyA, lenA := loadKey(a)
-	keyB, lenB := loadKey(b)
+	keyA, lenA := varstr.GetVarStr(a)
+	keyB, lenB := varstr.GetVarStr(b)
 
 	// not equal, return result.
-	if res := keyA.Compare(keyB); res != 0 {
+	if res := slice.Slice(keyA).Compare(keyB); res != 0 {
 		return res
 	}
 
@@ -163,11 +133,4 @@ func compareKey(a, b slice.Slice) int {
 	}
 
 	return slice.CMPSame
-}
-
-// 从一条record中读取 key 部分(指向的数据段相同).
-func loadKey(record slice.Slice) (slice.Slice, int) {
-	keyLength, varintLength := binary.Varint(record)
-
-	return record[varintLength : varintLength+int(keyLength)], varintLength + int(keyLength)
 }
